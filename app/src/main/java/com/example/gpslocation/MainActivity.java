@@ -60,7 +60,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
                 }else{
                     Toast.makeText(this, "Permission Denied", Toast.LENGTH_SHORT).show();
                 }
-                return;
+
             }
         }
     }
@@ -75,6 +75,12 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
     public void onProviderEnabled(String arg0) {
 
         Log.i("test","enabled");
+    }
+
+    @Override
+    public void onProviderDisabled(String arg0) {
+
+        Log.i("test","Disabled");
     }
 
 }
