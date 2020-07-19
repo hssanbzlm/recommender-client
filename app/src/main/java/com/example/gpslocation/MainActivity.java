@@ -18,17 +18,39 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import okhttp3.OkHttpClient;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+
 public class MainActivity extends AppCompatActivity implements LocationListener {
 
     public Location location;
     TextView textView;
     EditText editText;
+    final OkHttpClient okHttpClient = new OkHttpClient.Builder()
+            .readTimeout(180, TimeUnit.SECONDS)
+            .connectTimeout(180, TimeUnit.SECONDS)
+            .build();
+    Retrofit retrofit=new Retrofit.Builder()
+            .baseUrl("http://192.168.1.106:5000/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .client(okHttpClient)
+            .build();
+
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        textView = findViewById(R.id.textView);
+
 
         LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -42,7 +64,13 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
             }
         }
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1, 400, this);
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1, 2000, this);
+
+        /////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
 
     }
     @Override
@@ -67,6 +95,37 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
     @Override
     public void onLocationChanged(@NonNull Location location) {
         Log.i("test", String.valueOf(location.getLatitude()));
+
+        recommenderApi recommenderApi=retrofit.create(recommenderApi.class);
+        Call<List<response>> call =recommenderApi.getResponse(1,location.getLatitude(),location.getLongitude());
+        call.enqueue(new Callback<List<response>>() {
+            @Override
+            public void onResponse(Call<List<response>> call, Response<List<response>> response) {
+
+                if (!response.isSuccessful()) {
+                    textView.setText("code:" + response.code());
+                    return;
+                }
+                List<response> responses = response.body();
+                for (response resp : responses) {
+                    String content = "KKK";
+                    Log.i("test", resp.getTitle());
+
+                    content += "Item :" + resp.getTitle() +"/n";
+                    content += "Supplier : " + resp.getIdSupplier() + "/n/n";
+                    textView.append(content);
+
+
+                }
+            }
+
+            @Override
+            public void onFailure(Call<List<response>> call, Throwable t) {
+                    textView.setText(t.getMessage());
+
+
+            }
+        });
 
 
 
