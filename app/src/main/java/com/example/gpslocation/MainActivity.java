@@ -3,18 +3,26 @@ package com.example.gpslocation;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
+import android.app.Notification;
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -31,8 +39,10 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public class MainActivity extends AppCompatActivity implements LocationListener {
 
     public Location location;
-    TextView textView;
-    EditText editText;
+    private NotificationManagerCompat notificationManager;
+    public TextView textViewResult;
+    public TextView textView;
+    public ProgressBar progressBar;
     final OkHttpClient okHttpClient = new OkHttpClient.Builder()
             .readTimeout(180, TimeUnit.SECONDS)
             .connectTimeout(180, TimeUnit.SECONDS)
@@ -49,7 +59,11 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        textView = findViewById(R.id.textView);
+        notificationManager =NotificationManagerCompat.from(this);
+
+        textViewResult = findViewById(R.id.textViewResult);
+        textView=findViewById(R.id.textView);
+        progressBar=findViewById(R.id.progressBar);
 
 
         LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
@@ -64,13 +78,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
             }
         }
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1, 2000, this);
-
-        /////////////////////////////////////////////////////////////////////////////////////
-
-
-
-
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1, 500, this);
 
     }
     @Override
@@ -101,23 +109,32 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         call.enqueue(new Callback<List<response>>() {
             @Override
             public void onResponse(Call<List<response>> call, Response<List<response>> response) {
-
+                 String content="";
                 if (!response.isSuccessful()) {
                     textView.setText("code:" + response.code());
                     return;
                 }
                 List<response> responses = response.body();
                 for (response resp : responses) {
-                    String content = "KKK";
+
                     Log.i("test", resp.getTitle());
 
-                    content += "Item :" + resp.getTitle() +"/n";
-                    content += "Supplier : " + resp.getIdSupplier() + "/n/n";
-                    textView.append(content);
-
+                    content += "Item :" + resp.getTitle()+" ";
+                    content += "Supplier : " + resp.getStore() + " ";
+                    content+="lat :" +resp.getLat()+" ";
+                    content+="Long : "+resp.getLongi()+" ";
 
                 }
+                if(content.length()>0) {
+                    createNotification(content);
+                    textView.setText("Find some Items !!");
+                    progressBar.setEnabled(false);
+                    progressBar.setVisibility(View.GONE);
+                }
+
             }
+
+
 
             @Override
             public void onFailure(Call<List<response>> call, Throwable t) {
@@ -126,6 +143,35 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
 
             }
         });
+
+
+
+    }
+
+    public void createNotification(String content)
+    {
+        Intent notifyIntent = new Intent(this,ResultActivity.class);
+        notifyIntent.putExtra("values",content);
+// Set the Activity to start in a new, empty task
+        notifyIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+// Create the PendingIntent
+        PendingIntent notifyPendingIntent = PendingIntent.getActivity(
+                this, 0, notifyIntent, PendingIntent.FLAG_UPDATE_CURRENT
+        );
+
+        Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        Notification notification=new NotificationCompat.Builder(this,app.CHANNEL_1_ID)
+                .setSmallIcon(R.drawable.ic_1)
+                .setContentTitle("HELLO")
+                .setContentText("HIII")
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+                .setSound(soundUri)
+                .setAutoCancel(true)
+                .setContentIntent(notifyPendingIntent)
+                .build();
+        notificationManager.notify(1,notification);
 
 
 
@@ -140,6 +186,27 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
     public void onProviderDisabled(String arg0) {
 
         Log.i("test","Disabled");
+    }
+     
+   @Override
+    public void onPause() {
+
+       super.onPause();
+       textView.setText("We are searching for some interesting items");
+       progressBar.setEnabled(true);
+       progressBar.setVisibility(View.VISIBLE);
+
+   }
+
+    @Override
+    public void onResume() {
+
+        super.onResume();
+        textView.setText("We are searching for some interesting items");
+        progressBar.setEnabled(true);
+        progressBar.setVisibility(View.VISIBLE);
+
+
     }
 
 }
